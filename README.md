@@ -3,5 +3,6 @@
 
 ## 一键命令
 ```bash
-curl https://raw.githubusercontent.com/DullJZ/WireGuardConfigure/main/wireguard.sh | bash
+curl -O https://raw.githubusercontent.com/DullJZ/WireGuardConfigure/main/wireguard.sh
+bash wireguard.sh
 ```

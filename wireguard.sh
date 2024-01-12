@@ -68,23 +68,23 @@ if [ "$ROLE" = "server" ]; then
     SERVER_ADDRESS="10.0.0.1/24"
     echo "请输入服务端使用的网段（默认 10.0.0.1/24）:"
     read INPUT_SERVER_ADDRESS
-    if [ "$INPUT_SERVER_ADDRESS" != "$SERVER_ADDRESS" ]; then
-        SERVER_ADDRESS=${INPUT_SERVER_ADDRESS}
+    if [ ! -z "$INPUT_SERVER_ADDRESS" ]; then
+        SERVER_ADDRESS=$INPUT_SERVER_ADDRESS
     fi
-
+    
     SERVER_PORT=51820
     echo "请输入服务端监听的端口（默认 51820）:"
     read INPUT_SERVER_PORT
-    if [ "$INPUT_SERVER_PORT" != "$SERVER_PORT" ]; then
-        SERVER_PORT=${INPUT_SERVER_PORT}
+    if [ ! -z "$INPUT_SERVER_PORT" ]; then
+        SERVER_PORT=$INPUT_SERVER_PORT
     fi
 
     # 获取公网IP或域名
     SERVER_IP=$(curl ip.sb)
     echo "请输入服务端公网IP或域名（默认 ${SERVER_IP}）："
     read INPUT_SERVER_IP
-    if [ "$INPUT_SERVER_IP" != "$SERVER_IP" ]; then
-        SERVER_IP=${INPUT_SERVER_IP}
+    if [ ! -z "$INPUT_SERVER_IP" ]; then
+        SERVER_IP=$INPUT_SERVER_IP
     fi
 
     # 生成服务端密钥
@@ -175,5 +175,6 @@ elif [ "$ROLE" = "client" ]; then
     wg-quick up wg0
     echo "客户端密钥配置完成。"
 else
-    echo "输入错误，请输入 'server' 或 'client'。"
+    echo "输入错误，请重新输入。"
+
 fi
