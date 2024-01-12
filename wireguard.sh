@@ -52,13 +52,25 @@ generate_config() {
     fi
 }
 
-# 询问用户是配置服务端还是客户端
-echo "您要配置服务端还是客户端？请输入 'server' 或 'client':"
-read ROLE
+# 检测~/wireguard_keys目录是否存在
+if [ -d ~/wireguard_keys ]; then
+    echo "找到 ~/wireguard_keys 目录。请问要覆盖安装吗？(y/n)"
+    read OVERWRITE
+    if [ "$OVERWRITE" = "y" ]; then
+        rm -rf ~/wireguard_keys
+    else
+        echo "已取消安装。"
+        exit 1
+    fi
+fi
 
 # 创建一个目录来存放下载的密钥或存放即将上传的密钥
 mkdir -p ~/wireguard_keys
 cd ~/wireguard_keys
+
+# 询问用户是配置服务端还是客户端
+echo "您要配置服务端还是客户端？请输入 'server' 或 'client':"
+read ROLE
 
 if [ "$ROLE" = "server" ]; then
     # 服务端配置
@@ -103,21 +115,23 @@ if [ "$ROLE" = "server" ]; then
     # 询问用户输入 Git 仓库地址和 deploy key
     echo "请输入您的 GitHub 仓库地址（格式为 username/reponame）:"
     read REPO
-    echo "请输入您的 deploy key:"
-    read DEPLOY_KEY
 
-    # 设置 SSH 配置以使用 deploy key
+    # 生成 SSH 密钥对
     SSH_DIR=~/.ssh
     mkdir -p $SSH_DIR
-    echo "$DEPLOY_KEY" > $SSH_DIR/deploy_key
-    chmod 600 $SSH_DIR/deploy_key
+    ssh-keygen -t rsa -b 4096 -f $SSH_DIR/deploy_key -N ""
+    eval "$(ssh-agent -s)"
+    ssh-add ~/.ssh/deploy_key
+    # 显示生成的公钥给用户
+    echo -e "以下是生成的 SSH 公钥，请将其上传至 GitHub：\n"
+    cat $SSH_DIR/deploy_key.pub
+    echo -e "\n完成后请回车"
+    read TMP
 
     # 设置 Git 仓库和远程
     git init
+    git branch -M master
     git remote add origin git@github.com:$REPO.git
-
-    # 配置 SSH 使用特定的 key
-    echo -e "Host github.com\n\tIdentityFile ~/.ssh/deploy_key\n\tStrictHostKeyChecking no\n" > $SSH_DIR/config
 
     # 将服务端密钥存储到Git仓库
     mkdir -p 0
@@ -135,14 +149,14 @@ if [ "$ROLE" = "server" ]; then
     do
         CLIENT_PRIVATE_KEY=$(wg genkey)
         CLIENT_PUBLIC_KEY=$(echo $CLIENT_PRIVATE_KEY | wg pubkey)
+        mkdir -p $i
 
         # 生成客户端配置文件
         CLIENT_CONFIG="wg_client_${i}.conf"
-        generate_config $CLIENT_CONFIG $CLIENT_PRIVATE_KEY $SERVER_ADDRESS $SERVER_PORT $SERVER_PUBLIC_KEY "[您的公网IP或域名]:$SERVER_PORT"
+        generate_config $CLIENT_CONFIG $CLIENT_PRIVATE_KEY $SERVER_ADDRESS $SERVER_PORT $SERVER_PUBLIC_KEY "$SERVER_IP:$SERVER_PORT"
         mv $CLIENT_CONFIG ~/wireguard_keys/$i/
 
         # 将客户端密钥存储到Git仓库
-        mkdir -p $i
         echo $CLIENT_PRIVATE_KEY > $i/private_key
         echo $CLIENT_PUBLIC_KEY > $i/public_key
         git add $i/
@@ -150,7 +164,7 @@ if [ "$ROLE" = "server" ]; then
     done
 
     # 推送到GitHub
-    git push -u origin master
+    git push -u origin master -f
 
     echo "服务端和客户端密钥配置文件已生成并上传到GitHub仓库。"
 
